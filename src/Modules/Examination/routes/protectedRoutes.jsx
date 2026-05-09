@@ -7,11 +7,7 @@ const ProtectedRoute = ({ children, roles }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (
-      userRole !== undefined &&
-      userRole !== null &&
-      userRole !== "Guest-User"
-    ) {
+    if (userRole !== undefined && userRole !== null && userRole!=="Guest-User") {
       setIsLoading(false);
     }
   }, [userRole]);
@@ -20,7 +16,7 @@ const ProtectedRoute = ({ children, roles }) => {
     return null;
   }
 
-  if (!roles.includes(userRole)) {
+  if (!roles.includes(userRole) ) {
     return <Navigate to="/dashboard" replace />;
   }
 

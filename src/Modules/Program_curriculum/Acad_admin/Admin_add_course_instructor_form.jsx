@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Select,
-  NumberInput,
   Button,
   Group,
   Text,
@@ -12,91 +11,86 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useNavigate } from "react-router-dom";
+import { notifications } from "@mantine/notifications";
 import * as XLSX from "xlsx";
 import { fetchAllCourses, fetchFacultiesData } from "../api/api";
 import { host } from "../../../routes/globalRoutes";
 
-function Admin_add_course_instructor() {
+export default function Admin_add_course_instructor() {
   const [activeSection, setActiveSection] = useState("manual");
   const [file, setFile] = useState(null);
-  const [uploadedFile, setUploadedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [courses, setCourses] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const navigate = useNavigate();
 
+  // Academic Year options
+  const currentYear = new Date().getFullYear();
+  const academicYearOptions = Array.from({ length: 6 }, (_, i) => {
+    const start = currentYear - 4 + i;
+    const end = start + 1;
+    const label = `${start}-${String(end).slice(-2)}`;
+    return { value: label, label };
+  });
+
+  const semesterTypeOptions = [
+    { value: "Odd Semester", label: "Odd Semester" },
+    { value: "Even Semester", label: "Even Semester" },
+    { value: "Summer Semester", label: "Summer Semester" },
+  ];
+
   const form = useForm({
     initialValues: {
-      courseName: "",
-      instructor: "",
-      year: 2024,
-      semester: "",
-      runningBatch: false,
+      courseId: "",
+      instructorId: "",
+      academicYear: academicYearOptions[4].value,
+      semesterType: "Odd Semester",
     },
   });
 
   useEffect(() => {
-    const fetchCourses = async () => {
+    (async () => {
       try {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-          throw new Error("Authentication not found");
-        }
-        const response = await fetchAllCourses();
-        // console.log(response);
-
-        const courseList = response.map((course) => ({
-          id: course.id,
-          name: `${course.name} (${course.code})`,
-        }));
-        setCourses(courseList);
-        console.log("Course data: ", courseList);
-      } catch (error) {
-        console.error("Error fetching data:", error);
+        const courseResp = await fetchAllCourses();
+        setCourses(
+          courseResp.map((c) => ({
+            value: String(c.id),
+            label: `${c.name} (${c.code})`,
+          }))
+        );
+        const facResp = await fetchFacultiesData();
+        setFaculties(
+          facResp.map((f) => ({
+            value: String(f.id),
+            label: `${f.faculty_first_name} ${f.faculty_last_name}`,
+          }))
+        );
+      } catch (err) {
+        notifications.show({
+          title: "Error",
+          message: "Failed to load data. Please refresh the page.",
+          color: "red",
+          autoClose: 4000,
+        });
       }
-    };
-
-    const fetchFaculties = async () => {
-      try {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-          throw new Error("Authentication not found");
-        }
-
-        const response = await fetchFacultiesData();
-        console.log(response);
-
-        const facultyList = response.map((faculty) => ({
-          id: faculty.id,
-          name: `${faculty.faculty_first_name} ${faculty.faculty_last_name}`,
-        }));
-
-        setFaculties(facultyList);
-        console.log("Faculty data: ", faculties);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-    fetchCourses();
-    fetchFaculties();
+    })();
   }, []);
 
   const handleSubmit = async (values) => {
-    console.log(values);
+    localStorage.setItem("AdminInstructorsCacheChange", "true");
     const token = localStorage.getItem("authToken");
-
     const apiUrl = `${host}/programme_curriculum/api/admin_add_course_instructor/`;
 
     const payload = {
-      course_id: values.courseName, // Removed `_id`
-      instructor_id: values.instructor, // Removed `_id`
-      year: values.year,
-      semester_no: values.semester,
-      form_submit: true, // Add this if needed on the backend
+      course_id: values.courseId,
+      instructor_id: values.instructorId,
+      academic_year: values.academicYear,
+      semester_type: values.semesterType,
+      form_submit: true,
     };
 
     try {
-      const response = await fetch(apiUrl, {
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: {
           Authorization: `Token ${token}`,
@@ -104,33 +98,99 @@ function Admin_add_course_instructor() {
         },
         body: JSON.stringify(payload),
       });
-
-      if (response.ok) {
-        alert("Course Instructor added successfully!");
-        navigate("/programme_curriculum/admin_course_instructor");
+      if (res.ok) {
+        notifications.show({
+          title: "✅ Course Instructor Added Successfully!",
+          message: (
+            <div>
+              <Text size="sm" mb={8}>
+                <strong>Course instructor has been added.</strong>
+              </Text>
+              <Text size="xs" color="gray.7">
+                The instructor assignment has been created.
+              </Text>
+            </div>
+          ),
+          color: "green",
+          autoClose: 5000,
+          style: {
+            backgroundColor: '#d4edda',
+            borderColor: '#c3e6cb',
+            color: '#155724',
+          },
+        });
+        
+        setTimeout(() => {
+          navigate("/programme_curriculum/admin_course_instructor");
+        }, 1500);
       } else {
-        const errorText = await response.text();
-        console.error("Error:", errorText);
-        alert("Failed to add course instructor.");
+        const err = await res.json();
+        
+        notifications.show({
+          title: "❌ Failed to Add Course Instructor",
+          message: (
+            <div>
+              <Text size="sm" mb={8}>
+                <strong>{err.error || "Unable to add course instructor. Please try again."}</strong>
+              </Text>
+              <Text size="xs" color="gray.7">
+                {JSON.stringify(err.details) || "Please check your inputs and try again."}
+              </Text>
+            </div>
+          ),
+          color: "red",
+          autoClose: 7000,
+          style: {
+            backgroundColor: '#f8d7da',
+            borderColor: '#f5c6cb',
+            color: '#721c24',
+          },
+        });
       }
-    } catch (error) {
-      console.error("Error adding course instructor:", error);
-      alert("Failed to add course instructor.");
+    } catch (e) {
+      notifications.show({
+        title: "🚨 Network Error",
+        message: (
+          <div>
+            <Text size="sm" mb={8}>
+              <strong>Connection error occurred while adding instructor.</strong>
+            </Text>
+            <Text size="xs" color="gray.7">
+              Please check your internet connection and try again.
+            </Text>
+          </div>
+        ),
+        color: "red",
+        autoClose: 7000,
+        style: {
+          backgroundColor: '#f8d7da',
+          borderColor: '#f5c6cb',
+          color: '#721c24',
+        },
+      });
     }
   };
 
-  const handleUpload = async () => {
+    const handleUpload = async () => {
     if (!file) {
-      alert("Please choose a file to upload.");
+      notifications.show({
+        title: "⚠️ File Required",
+        message: "Please select an Excel file first.",
+        color: "orange",
+        autoClose: 4000,
+      });
       return;
     }
-
-    // Validate file type
-    if (!file.name.match(/\.(xls|xlsx)$/i)) {
-      alert("Only Excel files (.xls, .xlsx) are allowed.");
+    
+    if (!file.name.match(/\.(xls|xlsx)$/)) {
+      notifications.show({
+        title: "⚠️ Invalid File Type",
+        message: "Only .xls/.xlsx files are allowed.",
+        color: "orange",
+        autoClose: 4000,
+      });
       return;
     }
-
     setIsUploading(true);
     const token = localStorage.getItem("authToken");
     const apiUrl = `${host}/programme_curriculum/api/admin_add_course_instructor/`;
@@ -139,40 +199,71 @@ function Admin_add_course_instructor() {
       const formData = new FormData();
       formData.append("manual_instructor_xsl", file);
       formData.append("excel_submit", "true");
-
-      const response = await fetch(apiUrl, {
+      const res = await fetch(apiUrl, {
         method: "POST",
+        headers: { Authorization: `Token ${token}` },
         body: formData,
-        headers: {
-          Authorization: `Token ${token}`, // Required for Django CSRF
+      });
+      const data = await res.json();
+      if (res.ok) {
+        notifications.show({
+          title: "✅ Excel Upload Successful!",
+          message: (
+            <div>
+              <Text size="sm" mb={8}>
+                <strong>{data.success || "Course instructors have been uploaded."}</strong>
+              </Text>
+              <Text size="xs" color="gray.7">
+                Excel file has been processed and instructors have been added.
+              </Text>
+            </div>
+          ),
+          color: "green",
+          autoClose: 5000,
+          style: {
+            backgroundColor: '#d4edda',
+            borderColor: '#c3e6cb',
+            color: '#155724',
+          },
+        });
+        
+        setTimeout(() => {
+          navigate("/programme_curriculum/admin_course_instructor");
+        }, 1500);
+      } else {
+        throw new Error(data.error || JSON.stringify(data.details));
+      }
+    } catch (e) {
+      notifications.show({
+        title: "❌ Upload Failed",
+        message: (
+          <div>
+            <Text size="sm" mb={8}>
+              <strong>Upload error: {e.message}</strong>
+            </Text>
+            <Text size="xs" color="gray.7">
+              Please check your Excel file format and try again.
+            </Text>
+          </div>
+        ),
+        color: "red",
+        autoClose: 7000,
+        style: {
+          backgroundColor: '#f8d7da',
+          borderColor: '#f5c6cb',
+          color: '#721c24',
         },
       });
-
-      const data = await response.json();
-      if (response.ok) {
-        alert(data.success || "File processed successfully!");
-        navigate("/programme_curriculum/admin_course_instructor");
-      }
-      if (!response.ok) {
-        throw new Error(data.error || "Upload failed");
-      }
-
-      setUploadedFile(file);
-    } catch (error) {
-      alert(`Error: ${error.message}`);
     } finally {
       setIsUploading(false);
     }
   };
-  const handleCancel = () => {
-    setFile(null);
-    setUploadedFile(null);
-  };
+
+  const handleCancel = () =>
+    navigate("/programme_curriculum/admin_course_instructor");
 
   return (
-    <div
-      style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}
-    >
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Container
         fluid
         style={{
@@ -193,18 +284,17 @@ function Admin_add_course_instructor() {
             flex: 4,
           }}
         >
-          {/* Form Section */}
-          <div style={{ flex: 4 }}>
-            <form
-              onSubmit={form.onSubmit(handleSubmit)}
-              style={{
-                backgroundColor: "#fff",
-                padding: "2rem",
-                borderRadius: "8px",
-                boxShadow: "0 0 10px rgba(0,0,0,0.1)",
-              }}
-            >
-              <Text size="xl" weight={700} align="center">
+          <div
+            style={{
+              flex: 4,
+              backgroundColor: "#fff",
+              padding: "2rem",
+              borderRadius: "8px",
+              boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+            }}
+          >
+            <form onSubmit={form.onSubmit(handleSubmit)}>
+              <Text size="xl" weight={700} align="center" mb="md">
                 Course Instructor Form
               </Text>
 
@@ -214,14 +304,13 @@ function Admin_add_course_instructor() {
                   onClick={() => setActiveSection("manual")}
                   style={{ marginRight: "10px" }}
                 >
-                  Manual Form
+                  Manual
                 </Button>
                 <Button
                   variant={activeSection === "excel" ? "filled" : "outline"}
                   onClick={() => setActiveSection("excel")}
-                  style={{ marginRight: "10px" }}
                 >
-                  Upload via Excel
+                  Upload Excel
                 </Button>
               </Flex>
 
@@ -229,87 +318,54 @@ function Admin_add_course_instructor() {
                 {activeSection === "manual" ? (
                   <>
                     <Select
-                      label="Select Course"
-                      placeholder="-- Select Course Name --"
-                      data={courses.map((course) => ({
-                        label: `${course.name}`,
-                        value: String(course.id),
-                      }))}
-                      value={form.values.courseName}
-                      onChange={(value) =>
-                        form.setFieldValue("courseName", value)
-                      }
+                      label="Course"
+                      placeholder="Select course"
+                      data={courses}
+                      {...form.getInputProps("courseId")}
                       searchable
                       required
                     />
-
                     <Select
-                      label="Select Instructor"
-                      placeholder="-- Select Instructor --"
-                      data={faculties.map((faculty) => ({
-                        label: `${faculty.name} (${faculty.id})`,
-                        value: String(faculty.id),
-                      }))}
-                      value={form.values.instructor}
-                      onChange={(value) =>
-                        form.setFieldValue("instructor", value)
-                      }
+                      label="Instructor"
+                      placeholder="Select instructor"
+                      data={faculties}
+                      {...form.getInputProps("instructorId")}
                       searchable
                       required
                     />
-
-                    <NumberInput
-                      label="Select Year"
-                      defaultValue={2024}
-                      value={form.values.year}
-                      onChange={(value) => form.setFieldValue("year", value)}
-                      required
-                    />
-
                     <Select
-                      label="Select Semester Number"
-                      placeholder="-- Select Semester --"
-                      data={[
-                        { value: "1", label: "Semester 1" },
-                        { value: "2", label: "Semester 2" },
-                        { value: "3", label: "Semester 3" },
-                        { value: "4", label: "Semester 4" },
-                        { value: "5", label: "Semester 5" },
-                        { value: "6", label: "Semester 6" },
-                        { value: "7", label: "Semester 7" },
-                        { value: "8", label: "Semester 8" },
-                      ]}
-                      value={form.values.semester}
-                      onChange={(value) =>
-                        form.setFieldValue("semester", value)
-                      }
+                      label="Academic Year"
+                      data={academicYearOptions}
+                      {...form.getInputProps("academicYear")}
                       required
-                      searchable
+                    />
+                    <Select
+                      label="Semester Type"
+                      data={semesterTypeOptions}
+                      {...form.getInputProps("semesterType")}
+                      required
                     />
 
                     <Group position="right" mt="lg">
-                      <Button variant="outline" className="cancel-btn">
+                      <Button variant="outline" onClick={handleCancel}>
                         Cancel
                       </Button>
-                      <Button type="submit" className="submit-btn">
-                        Submit
-                      </Button>
+                      <Button type="submit">Submit</Button>
                     </Group>
                   </>
                 ) : (
                   <>
                     <Text size="xl" weight={700}>
-                      Upload Course Instructors via Excel
+                      Upload via Excel
                     </Text>
-
                     <Group spacing="sm" mb="md">
                       <FileInput
-                        label="Choose File"
-                        placeholder="No file chosen"
+                        label="Excel file"
+                        placeholder="Select .xls/.xlsx"
                         onChange={setFile}
-                        disabled={uploadedFile !== null}
+                        disabled={isUploading}
                         style={{
-                          width: "250px", // Set a fixed width
+                          width: "250px",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -318,47 +374,41 @@ function Admin_add_course_instructor() {
                       <Button
                         variant="outline"
                         onClick={() => {
-                          const sampleData = [
+                          const sample = [
                             [
                               "Course Code",
                               "Course Version",
                               "Instructor Id",
-                              "Year",
-                              "Semester no",
+                              "Academic Year",
+                              "Semester Type",
                             ],
-                            ["NS205i", "1", "amitv", "2023", "5"],
-                            ["CS3010", "1", "atul", "2023", "5"],
+                            [
+                              "NS205i",
+                              "1",
+                              "amitv",
+                              academicYearOptions[4].value,
+                              "Odd Semester",
+                            ],
                           ];
-
-                          const ws = XLSX.utils.aoa_to_sheet(sampleData);
+                          const ws = XLSX.utils.aoa_to_sheet(sample);
                           const wb = XLSX.utils.book_new();
                           XLSX.utils.book_append_sheet(wb, ws, "Instructors");
-                          XLSX.writeFile(wb, "instructors_sample.xls", {
-                            bookType: "biff8",
-                          });
+                          XLSX.writeFile(wb, "instructors_sample.xlsx");
                         }}
                         style={{ marginTop: "24px" }}
                       >
                         Download Sample
                       </Button>
                     </Group>
-
                     <Group position="right" mt="lg">
-                      <Button
-                        variant="outline"
-                        className="cancel-btn"
-                        onClick={handleCancel}
-                      >
+                      <Button variant="outline" onClick={handleCancel}>
                         Cancel
                       </Button>
-
                       <Button
                         onClick={handleUpload}
-                        variant="filled"
-                        color="blue"
                         disabled={isUploading || !file}
                       >
-                        {isUploading ? "Uploading..." : "Upload"}
+                        {isUploading ? "Uploading…" : "Upload"}
                       </Button>
                     </Group>
                   </>
@@ -366,20 +416,9 @@ function Admin_add_course_instructor() {
               </Stack>
             </form>
           </div>
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "flex-start",
-            }}
-          >
-            {" "}
-          </div>
+          <div style={{ flex: 1 }} />
         </div>
       </Container>
     </div>
   );
 }
-
-export default Admin_add_course_instructor;

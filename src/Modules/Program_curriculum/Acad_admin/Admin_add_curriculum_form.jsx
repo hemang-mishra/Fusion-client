@@ -14,6 +14,7 @@ import { useForm } from "@mantine/form";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { useMediaQuery } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import { fetchAllProgrammes } from "../api/api";
 import { host } from "../../../routes/globalRoutes";
 
@@ -50,8 +51,13 @@ function AdminAddCurriculumForm() {
         setPgData(response.pg_programmes || []);
         setPhdData(response.phd_programmes || []);
       } catch (err) {
-        console.error("Error fetching programs:", err);
         setError("Failed to load programs. Please try again.");
+        notifications.show({
+          title: "Error",
+          message: "Failed to load programs. Please refresh the page.",
+          color: "red",
+          autoClose: 4000,
+        });
       } finally {
         setLoadingPrograms(false);
       }
@@ -103,15 +109,60 @@ function AdminAddCurriculumForm() {
         },
       );
       if (response.status === 201) {
-        alert("Curriculum added successfully!");
-        navigate("/programme_curriculum/acad_view_all_working_curriculums");
+        notifications.show({
+          title: "🎉 Success!",
+          message: "Curriculum added successfully! You will be redirected to the curriculum list.",
+          color: "green",
+          autoClose: 4000,
+          style: {
+            backgroundColor: "#f0fdf4",
+            borderLeft: "4px solid #10b981",
+          },
+          styles: {
+            title: { 
+              color: "#065f46", 
+              fontWeight: 600,
+              fontSize: "16px"
+            },
+            description: { 
+              color: "#047857",
+              fontSize: "14px"
+            },
+          },
+        });
+        
+        setTimeout(() => {
+          navigate("/programme_curriculum/acad_view_all_working_curriculums");
+        }, 1500);
       }
     } catch (err) {
-      console.error("Error:", err);
-      alert("Failed to add curriculum.");
+      notifications.show({
+        title: "❌ Error!",
+        message: "Failed to add curriculum. Please check your input and try again.",
+        color: "red",
+        autoClose: 5000,
+        style: {
+          backgroundColor: "#fef2f2",
+          borderLeft: "4px solid #ef4444",
+        },
+        styles: {
+          title: { 
+            color: "#7f1d1d", 
+            fontWeight: 600,
+            fontSize: "16px"
+          },
+          description: { 
+            color: "#991b1b",
+            fontSize: "14px"
+          },
+        },
+      });
     } finally {
       setLoading(false);
     }
+  };
+  const handleCancel = () => {
+    navigate("/programme_curriculum/acad_view_all_working_curriculums");
   };
 
   return (
@@ -124,7 +175,6 @@ function AdminAddCurriculumForm() {
         padding: "2rem",
       }}
     >
-      {/* Buttons move above the form on mobile screens */}
       {isMobile && (
         <Group spacing="md" position="center" mb="lg">
           <Link to="/programme_curriculum/acad_admin_add_programme_form">
@@ -153,7 +203,6 @@ function AdminAddCurriculumForm() {
           gap: "2rem",
         }}
       >
-        {/* Form */}
         <div style={{ flex: 4 }}>
           <form
             onSubmit={form.onSubmit(handleSubmit)}
@@ -226,12 +275,12 @@ function AdminAddCurriculumForm() {
 
             <Group position="right" mt="lg">
               <Button
-                variant="outline"
-                onClick={() => form.reset()}
-                className="cancel-btn"
-              >
-                Cancel
-              </Button>
+                                                                     variant="outline"
+                                                                     className="cancel-btn"
+                                                                     onClick={handleCancel}
+                                                                   >
+                                                                     Cancel
+                                                                   </Button>
               <Button type="submit" className="submit-btn" loading={loading}>
                 Submit
               </Button>
@@ -239,7 +288,6 @@ function AdminAddCurriculumForm() {
           </form>
         </div>
 
-        {/* Buttons remain on the right for larger screens */}
         {!isMobile && (
           <div
             style={{

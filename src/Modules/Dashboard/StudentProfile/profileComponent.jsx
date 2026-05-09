@@ -5,7 +5,7 @@ import { notifications } from "@mantine/notifications";
 import axios from "axios";
 import { updateProfileDataRoute } from "../../../routes/dashboardRoutes";
 
-function ProfileComponent({ data, isEditable }) {
+function ProfileComponent({ data }) {
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
     about: data.profile?.about_me || "N/A",
@@ -88,14 +88,9 @@ function ProfileComponent({ data, isEditable }) {
           ) : (
             <Text>{profileData.about}</Text>
           )}
-          {isEditable && (
-            <Button
-              onClick={handleEditClick}
-              color={isEditing ? "green" : "red"}
-            >
-              {isEditing ? "Save" : "Edit"}
-            </Button>
-          )}
+          <Button onClick={handleEditClick} color={isEditing ? "green" : "red"}>
+            {isEditing ? "Save" : "Edit"}
+          </Button>
         </Flex>
       </Flex>
 
@@ -197,6 +192,6 @@ ProfileComponent.propTypes = {
       }),
     ),
   }),
-  isEditable: PropTypes.bool.isRequired, // Added this line
 };
+
 export default ProfileComponent;

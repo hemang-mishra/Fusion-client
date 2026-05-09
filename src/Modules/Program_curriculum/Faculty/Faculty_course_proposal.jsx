@@ -11,17 +11,22 @@ import {
   TextInput,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { Link } from "react-router-dom";
-import { fetchFacultyCourseProposalData } from "../api/api";
-import { host } from "../../../routes/globalRoutes";
+import { Link, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
-import { useNavigate } from "react-router-dom";
+import {
+  fetchFacultyCourseProposalData,
+  fetchFacultyOutwardFilesData,
+} from "../api/api";
+import { host } from "../../../routes/globalRoutes";
 
 function CourseProposalTable({ courseProposals, onArchiveSuccess }) {
   const navigate = useNavigate();
-  const handleNavigation = (id) => {
+
+  const handleNavigation = (id, flag) => {
+    // const storageKey = "courseProposals";
+    // sessionStorage.setItem(storageKey, JSON.stringify(courseProposals));
     navigate(
-      `/programme_curriculum/view_a_course_proposal_form?proposalid=${id}`,
+      `/programme_curriculum/view_a_course_proposal_form?proposalid=${id}&update=${flag ? 1 : 0}`,
     );
   };
 
@@ -144,7 +149,9 @@ function CourseProposalTable({ courseProposals, onArchiveSuccess }) {
                     }}
                   >
                     <Button
-                      onClick={() => handleNavigation(proposal.pk)}
+                      onClick={() =>
+                        handleNavigation(proposal.pk, proposal.fields.is_update)
+                      }
                       variant="filled"
                       style={{ backgroundColor: "#3498db" }}
                     >
@@ -159,16 +166,31 @@ function CourseProposalTable({ courseProposals, onArchiveSuccess }) {
                       borderRight: "1px solid #d3d3d3",
                     }}
                   >
-                    <Link
-                      to={`/programme_curriculum/filetracking?id=${proposal.pk}`}
-                    >
+                    {proposal.fields.is_submitted ? (
                       <Button
                         variant="filled"
-                        style={{ backgroundColor: "#2ecc71" }}
+                        style={{
+                          backgroundColor: proposal.fields.is_rejected
+                            ? "#e74c3c"
+                            : "#2ecc71",
+                          cursor: "default",
+                        }}
+                        disabled
                       >
-                        Submit
+                        {proposal.fields.is_rejected ? "Rejected" : "Submitted"}
                       </Button>
-                    </Link>
+                    ) : (
+                      <Link
+                        to={`/programme_curriculum/filetracking?id=${proposal.pk}&update=${proposal.fields.is_update ? 1 : 0}`}
+                      >
+                        <Button
+                          variant="filled"
+                          style={{ backgroundColor: "#2ecc71" }}
+                        >
+                          Submit
+                        </Button>
+                      </Link>
+                    )}
                   </td>
                   <td
                     style={{
@@ -206,8 +228,10 @@ function CourseProposalTable({ courseProposals, onArchiveSuccess }) {
 
 function ArchivedCoursesTable({ courseProposals, onRestoreSuccess }) {
   const navigate = useNavigate();
-  const handleNavigation = (courseCode) => {
-    navigate(`/programme_curriculum/faculty_course_view?course=${courseCode}`);
+  const handleNavigation = (id, flag) => {
+    navigate(
+      `/programme_curriculum/view_a_course_proposal_form?proposalid=${id}&update=${flag ? 1 : 0}`,
+    );
   };
 
   const handleRestore = async (id) => {
@@ -261,6 +285,7 @@ function ArchivedCoursesTable({ courseProposals, onRestoreSuccess }) {
               "Course Name",
               "Course Code",
               "View",
+              "Status",
               "Restore",
             ].map((header, index) => (
               <th
@@ -329,11 +354,38 @@ function ArchivedCoursesTable({ courseProposals, onRestoreSuccess }) {
                     }}
                   >
                     <Button
-                      onClick={() => handleNavigation(proposal.fields.code)}
+                      onClick={() =>
+                        handleNavigation(proposal.pk, proposal.fields.is_update)
+                      }
                       variant="filled"
                       style={{ backgroundColor: "#3498db" }}
                     >
                       View
+                    </Button>
+                  </td>
+                  <td
+                    style={{
+                      padding: "15px 20px",
+                      textAlign: "center",
+                      color: "black",
+                      borderRight: "1px solid #d3d3d3",
+                    }}
+                  >
+                    <Button
+                      variant="filled"
+                      style={{
+                        backgroundColor: proposal.fields.is_rejected
+                          ? "#e74c3c"
+                          : "#2ecc71",
+                        cursor: "default",
+                      }}
+                      disabled
+                    >
+                      {proposal.fields.is_rejected
+                        ? "Rejected"
+                        : proposal.fields.is_submitted
+                          ? "Submitted"
+                          : "Not Submitted"}
                     </Button>
                   </td>
                   <td
@@ -357,7 +409,7 @@ function ArchivedCoursesTable({ courseProposals, onRestoreSuccess }) {
           ) : (
             <tr>
               <td
-                colSpan="5"
+                colSpan="6"
                 style={{ textAlign: "center", padding: "15px 20px" }}
               >
                 No archived course proposals available.
@@ -377,8 +429,13 @@ function FormSection({
   formType,
   onArchiveSuccess,
   onRestoreSuccess,
-  filteredProposals,
+  proposals,
 }) {
+  const filteredProposals =
+    formType === "new-forms"
+      ? proposals.newProposals
+      : proposals.updateProposals;
+
   return (
     <Container style={{ padding: "20px", maxWidth: "100%" }}>
       <Flex justify="flex-start" align="center" mb={10}>
@@ -442,7 +499,10 @@ function FormSection({
 function Admin_course_proposal_form() {
   const [activeForm, setActiveForm] = useState("new-forms");
   const [activeTab, setActiveTab] = useState("new-courses");
-  const [courseProposals, setCourseProposals] = useState([]);
+  const [proposals, setProposals] = useState({
+    newProposals: [],
+    updateProposals: [],
+  });
   const [filter, setFilter] = useState({
     uploader: "",
     name: "",
@@ -454,40 +514,81 @@ function Admin_course_proposal_form() {
 
   useEffect(() => {
     if (username) {
-      const fetchFacultyCourseProposal = async (uname, des) => {
+      const fetchData = async (uname, des) => {
         try {
-          const response = await fetchFacultyCourseProposalData(uname, des);
-          sessionStorage.setItem(
-            "courseProposals",
-            JSON.stringify(response.courseProposals),
-          );
-          setCourseProposals(response.courseProposals);
+          const [proposalResponse, outwardData] = await Promise.all([
+            fetchFacultyCourseProposalData(uname, des),
+            fetchFacultyOutwardFilesData(uname, des),
+          ]);
+
+          const outwardResponse = await outwardData.json();
+
+          // Process outward files to get submitted proposal IDs
+          const outwardFileIds =
+            outwardResponse.courseProposals?.map((p) => p.file_id) || [];
+
+          // Mark proposals as submitted if they exist in outward files
+          const processedNewProposals =
+            proposalResponse.courseProposals?.map((proposal) => ({
+              ...proposal,
+              fields: {
+                ...proposal.fields,
+                is_submitted: outwardFileIds.includes(proposal.pk.toString()),
+                is_rejected:
+                  outwardResponse.courseProposals?.find(
+                    (p) => p.file_id === proposal.pk.toString(),
+                  )?.is_rejected || false,
+              },
+            })) || [];
+            sessionStorage.setItem("courseProposals", JSON.stringify(processedNewProposals));
+
+          const processedUpdateProposals =
+            proposalResponse.updateProposals?.map((proposal) => ({
+              ...proposal,
+              fields: {
+                ...proposal.fields,
+                is_submitted: outwardFileIds.includes(proposal.pk.toString()),
+                is_rejected:
+                  outwardResponse.courseProposals?.find(
+                    (p) => p.file_id === proposal.pk.toString(),
+                  )?.is_rejected || false,
+              },
+            })) || [];
+            sessionStorage.setItem("updateProposals", JSON.stringify(processedUpdateProposals));
+
+
+          setProposals({
+            newProposals: processedNewProposals,
+            updateProposals: processedUpdateProposals,
+          });
         } catch (error) {
-          console.error("Error fetching courses: ", error);
+          console.error("Error fetching data: ", error);
         }
       };
-      fetchFacultyCourseProposal(username, role);
+      fetchData(username, role);
     }
   }, [username, role]);
 
-  const handleArchiveSuccess = (archivedId) => {
-    setCourseProposals((prevProposals) =>
-      prevProposals.map((proposal) =>
-        proposal.pk === archivedId
-          ? { ...proposal, fields: { ...proposal.fields, is_archive: true } }
-          : proposal,
+  const handleArchiveSuccess = (id) => {
+    setProposals((prev) => ({
+      newProposals: prev.newProposals.map((p) =>
+        p.pk === id ? { ...p, fields: { ...p.fields, is_archive: true } } : p,
       ),
-    );
+      updateProposals: prev.updateProposals.map((p) =>
+        p.pk === id ? { ...p, fields: { ...p.fields, is_archive: true } } : p,
+      ),
+    }));
   };
 
-  const handleRestoreSuccess = (restoredId) => {
-    setCourseProposals((prevProposals) =>
-      prevProposals.map((proposal) =>
-        proposal.pk === restoredId
-          ? { ...proposal, fields: { ...proposal.fields, is_archive: false } }
-          : proposal,
+  const handleRestoreSuccess = (id) => {
+    setProposals((prev) => ({
+      newProposals: prev.newProposals.map((p) =>
+        p.pk === id ? { ...p, fields: { ...p.fields, is_archive: false } } : p,
       ),
-    );
+      updateProposals: prev.updateProposals.map((p) =>
+        p.pk === id ? { ...p, fields: { ...p.fields, is_archive: false } } : p,
+      ),
+    }));
   };
 
   const handleFormSwitch = (form) => {
@@ -517,7 +618,8 @@ function Admin_course_proposal_form() {
     });
   };
 
-  const filteredProposals = applyFilters(courseProposals);
+  const filteredNewProposals = applyFilters(proposals.newProposals);
+  const filteredUpdateProposals = applyFilters(proposals.updateProposals);
 
   return (
     <MantineProvider
@@ -576,10 +678,12 @@ function Admin_course_proposal_form() {
                   setActiveTab={setActiveTab}
                   title="New Course Proposal Forms"
                   formType="new-forms"
-                  courseProposals={courseProposals}
                   onArchiveSuccess={handleArchiveSuccess}
                   onRestoreSuccess={handleRestoreSuccess}
-                  filteredProposals={filteredProposals}
+                  proposals={{
+                    newProposals: filteredNewProposals,
+                    updateProposals: filteredUpdateProposals,
+                  }}
                 />
               )}
 
@@ -589,10 +693,12 @@ function Admin_course_proposal_form() {
                   setActiveTab={setActiveTab}
                   title="Updated Course Proposal Forms"
                   formType="updated-forms"
-                  courseProposals={courseProposals}
                   onArchiveSuccess={handleArchiveSuccess}
                   onRestoreSuccess={handleRestoreSuccess}
-                  filteredProposals={filteredProposals}
+                  proposals={{
+                    newProposals: filteredNewProposals,
+                    updateProposals: filteredUpdateProposals,
+                  }}
                 />
               )}
             </div>
@@ -630,8 +736,10 @@ FormSection.propTypes = {
   setActiveTab: PropTypes.func.isRequired,
   title: PropTypes.string.isRequired,
   formType: PropTypes.string.isRequired,
-  courseProposals: PropTypes.array.isRequired,
-  filteredProposals: PropTypes.array.isRequired,
+  proposals: PropTypes.shape({
+    newProposals: PropTypes.array.isRequired,
+    updateProposals: PropTypes.array.isRequired,
+  }).isRequired,
   onArchiveSuccess: PropTypes.func,
   onRestoreSuccess: PropTypes.func,
 };

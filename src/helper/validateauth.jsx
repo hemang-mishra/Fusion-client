@@ -25,11 +25,11 @@ function ValidateAuth() {
     if (!token) {
       console.error("No authentication token found!");
       localStorage.removeItem("authToken");
-      notifications.show({
-        title: "Authentication Error",
-        message: "Token Invalid/Expired! Redirecting to login page.",
-        color: "red",
-      });
+      // notifications.show({
+      //   title: "Authentication Error",
+      //   message: "Token Invalid/Expired! Redirecting to login page.",
+      //   color: "red",
+      // });
       return navigate("/accounts/login");
     }
 
@@ -46,7 +46,7 @@ function ValidateAuth() {
         roll_no,
       } = data;
 
-      console.log("User Data:", data);
+      // console.log("User Data:", data);
 
       dispatch(setUserName(name));
       dispatch(setRollNo(roll_no));

@@ -15,7 +15,7 @@ import {
 import axios from "axios";
 import { saveAs } from "file-saver";
 import {
-  batchesRoute,
+  listBatchesRoute,
   courseListRoute,
   studentListRoute,
   verifyRegistrationRoute,
@@ -45,13 +45,12 @@ function VerifyStudentRegistration() {
         return;
       }
       try {
-        const response = await axios.get(batchesRoute, {
+        const response = await axios.get(listBatchesRoute, {
           headers: {
             Authorization: `Token ${token}`,
           },
         });
-        console.log("Fetched Batches:", response.data.batches);
-        setBatches(response.data.batches);
+        setBatches(response.data.batches || response.data);
       } catch (fetchError) {
         setError(fetchError);
       } finally {
@@ -60,7 +59,6 @@ function VerifyStudentRegistration() {
     };
 
     fetchBatches();
-    console.log(batches, loading);
   }, []);
 
   // Fetch student data from API
@@ -101,7 +99,7 @@ function VerifyStudentRegistration() {
         setDataFetched(true); // Mark data as fetched
       }
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.status === 404 ? "Student list endpoint not found. Please contact admin." : err.message);
     } finally {
       setLoading(false);
     }
@@ -129,7 +127,6 @@ function VerifyStudentRegistration() {
           },
         },
       );
-      console.log("Fetched Course sata:", response.data);
       setSelectedCourses(response.data.final_registration);
       setOpened(true);
     } catch (fetchError) {
@@ -168,7 +165,6 @@ function VerifyStudentRegistration() {
           },
         },
       );
-      console.log("Fetched response:", response.data);
       if (action === "accept") {
         setStudents((prev) =>
           prev.filter((stu) => stu.student_id__id !== rollNo),
@@ -208,8 +204,8 @@ function VerifyStudentRegistration() {
           setBatch(val);
         }}
         data={batches.map((bat) => ({
-          value: bat.batch_id.toString(),
-          label: `${bat.name} ${bat.discipline} ${bat.year}`,
+          value: (bat.id || bat.batch_id).toString(),
+          label: `${bat.name || bat.label || `Batch ${bat.year}`} ${bat.discipline || ''}`,
         }))}
         disabled={loading}
         searchable
@@ -234,7 +230,7 @@ function VerifyStudentRegistration() {
 
       {error && (
         <Notification color="red" mt="md">
-          {error}
+          {error.message || error}
         </Notification>
       )}
 
@@ -431,7 +427,17 @@ function VerifyStudentRegistration() {
             {selectedCourses.map((course, index) => (
               <List.Item key={index}>
                 {course.course_id.name} ({course.course_id.code}) -{" "}
-                {course.course_id.credit} credits
+                {course.course_id.credit} credits 
+                {course.old_course_registration && (
+                  <>
+                    <strong> replaces</strong>{" "}
+                    <span style={{ color: "#555" }}>
+                      {course.old_course_registration.course_id.name} ({course.old_course_registration.course_id.code}) -{" "}
+                      {course.old_course_registration.course_id.credit} credits —{" "}
+                      {course.old_course_registration.semester_id.semester_no} semester
+                    </span>
+                  </>
+                )}
               </List.Item>
             ))}
           </List>

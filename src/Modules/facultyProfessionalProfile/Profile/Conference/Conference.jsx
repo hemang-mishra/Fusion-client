@@ -44,7 +44,10 @@ export default function ConferenceSymposium() {
   const pfNo = useSelector((state) => state.pfNo.value);
 
   function seeError() {
-    console.log(error);
+    if (error) {
+      alert(error);
+      setError(null);
+    }
   }
 
   seeError();
@@ -85,11 +88,9 @@ export default function ConferenceSymposium() {
 
       if (isEdit === false) {
         const res = await axios.post(insertConsymRoute, formData);
-        console.log(res.data);
       } else {
         formData.append("conferencepk2", Id);
         const res = await axios.post(updateConsymRoute, formData);
-        console.log(res.data);
         setEdit(false);
         setId(0);
       }
@@ -258,7 +259,7 @@ export default function ConferenceSymposium() {
               <Grid.Col span={12}>
                 <TextInput
                   required
-                  label="Event Name"
+                  label="Conference Name"
                   placeholder="Conference Name"
                   value={inputs.conferenceName}
                   onChange={(e) =>

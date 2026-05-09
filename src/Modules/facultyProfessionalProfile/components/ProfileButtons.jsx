@@ -12,13 +12,12 @@ import PublicationMaster from "../Profile/Publications/PublicationsMaster";
 import OtherMaster from "../Profile/Others/OtherMaster";
 import MyProfileMaster from "../Profile/MyProfile/MyProfileMaster";
 import classes from "../../Dashboard/Dashboard.module.css";
-// import AboutMePage from "../Profile/AboutMe/AboutMe";
+import AboutMePage from "../Profile/AboutMe/AboutMe";
 import CustomBreadcrumbs from "../../../components/Breadcrumbs";
-// import AdministrativePosition from "../Profile/AdministrativePosition/AdministrativePosition";
-// import Qualifications from "../Profile/Qualifications/Qualifications";
-// import Honors from "../Profile/Honors/Honors";
-// import ProfessionalExperience from "../Profile/ProfessionalExperience/ProfessionalExperience";
-import ExpertLecturesForm from "../Profile/Others/ExpertLectures";
+import AdministrativePosition from "../Profile/AdministrativePosition/AdministrativePosition";
+import Qualifications from "../Profile/Qualifications/Qualifications";
+import Honors from "../Profile/Honors/Honors";
+import ProfessionalExperience from "../Profile/ProfessionalExperience/ProfessionalExperience";
 
 function ProfileButtons() {
   const [activeTab, setActiveTab] = useState("0");
@@ -71,7 +70,7 @@ function ProfileButtons() {
         ),
       },
       {
-        title: "Events Organised",
+        title: "Events",
         component: (
           <EventMaster
             breadCrumbItems={breadCrumbItems}
@@ -89,7 +88,7 @@ function ProfileButtons() {
         ),
       },
       {
-        title: "Events Attended",
+        title: "Conference/Symposium",
         component: (
           <ConferenceMaster
             breadCrumbItems={breadCrumbItems}
@@ -106,24 +105,6 @@ function ProfileButtons() {
           />
         ),
       },
-      // {
-      //   title: "Honors",
-      //   component: (
-      //     <Honors
-      //       breadCrumbItems={breadCrumbItems}
-      //       setBreadCrumbItems={setBreadCrumbItems}
-      //     />
-      //   ),
-      // },
-      {
-        title: "Expert Lectures",
-        component: (
-          <ExpertLecturesForm
-            breadCrumbItems={breadCrumbItems}
-            setBreadCrumbItems={setBreadCrumbItems}
-          />
-        ),
-      },
       {
         title: "My Profile",
         component: (
@@ -133,43 +114,51 @@ function ProfileButtons() {
           />
         ),
       },
-
-      // {
-      //   title: "Administrative Position",
-      //   component: (
-      //     <AdministrativePosition
-      //       breadCrumbItems={breadCrumbItems}
-      //       setBreadCrumbItems={setBreadCrumbItems}
-      //     />
-      //   ),
-      // },
-      // {
-      //   title: "Qualifications",
-      //   component: (
-      //     <Qualifications
-      //       breadCrumbItems={breadCrumbItems}
-      //       setBreadCrumbItems={setBreadCrumbItems}
-      //     />
-      //   ),
-      // },
-      // {
-      //   title: "Honors",
-      //   component: (
-      //     <Honors
-      //       breadCrumbItems={breadCrumbItems}
-      //       setBreadCrumbItems={setBreadCrumbItems}
-      //     />
-      //   ),
-      // },
-      // {
-      //   title: "Professional Experience",
-      //   component: (
-      //     <ProfessionalExperience
-      //       breadCrumbItems={breadCrumbItems}
-      //       setBreadCrumbItems={setBreadCrumbItems}
-      //     />
-      //   ),
-      // },
+      {
+        title: "About Me",
+        component: (
+          <AboutMePage
+            breadCrumbItems={breadCrumbItems}
+            setBreadCrumbItems={setBreadCrumbItems}
+          />
+        ),
+      },
+      {
+        title: "Administrative Position",
+        component: (
+          <AdministrativePosition
+            breadCrumbItems={breadCrumbItems}
+            setBreadCrumbItems={setBreadCrumbItems}
+          />
+        ),
+      },
+      {
+        title: "Qualifications",
+        component: (
+          <Qualifications
+            breadCrumbItems={breadCrumbItems}
+            setBreadCrumbItems={setBreadCrumbItems}
+          />
+        ),
+      },
+      {
+        title: "Honors",
+        component: (
+          <Honors
+            breadCrumbItems={breadCrumbItems}
+            setBreadCrumbItems={setBreadCrumbItems}
+          />
+        ),
+      },
+      {
+        title: "Professional Experience",
+        component: (
+          <ProfessionalExperience
+            breadCrumbItems={breadCrumbItems}
+            setBreadCrumbItems={setBreadCrumbItems}
+          />
+        ),
+      },
     ];
   };
 

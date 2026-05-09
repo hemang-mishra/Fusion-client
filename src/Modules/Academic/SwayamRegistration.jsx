@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, Text, Button, Alert, Select, Loader } from "@mantine/core";
-import axios from "axios";
 import FusionTable from "../../components/FusionTable";
+import axios from "axios";
 import {
   swayamRegistrationRoute,
   swayamRegistrationSubmitRoute,
@@ -32,7 +32,7 @@ function SwayamRegistration() {
         });
         setCourseSlots(response.data);
       } catch (err) {
-        setError(err);
+        setError(err?.response?.data?.error);
       } finally {
         setLoading(false);
       }
@@ -58,7 +58,7 @@ function SwayamRegistration() {
         choicesSelections[slot.sno] &&
         choicesSelections[slot.sno] !== "" &&
         remarksSelections[slot.sno] &&
-        remarksSelections[slot.sno] !== "",
+        remarksSelections[slot.sno] !== ""
     );
 
   // On submission, calculate total credits and build the payload.
@@ -69,9 +69,7 @@ function SwayamRegistration() {
       if (selectedCourseIdStr) {
         // Convert string to number.
         const selectedCourseId = parseInt(selectedCourseIdStr, 10);
-        const course = slot.course_choices.find(
-          (c) => c.id === selectedCourseId,
-        );
+        const course = slot.course_choices.find((c) => c.id === selectedCourseId);
         if (course) {
           return sum + course.credits;
         }
@@ -107,7 +105,7 @@ function SwayamRegistration() {
             "Content-Type": "application/json",
             Authorization: `Token ${token}`,
           },
-        },
+        }
       );
       if (response.status === 201 || response.status === 200) {
         setSubmitted(true);
@@ -133,8 +131,8 @@ function SwayamRegistration() {
   const tableRows = courseSlots.map((slot, index) => ({
     "S. No": index + 1,
     "Slot Name": slot.slot_name,
-    Type: slot.slot_type,
-    Semester: slot.semester,
+    "Type": slot.slot_type,
+    "Semester": slot.semester,
     "Course Options": (
       <Select
         placeholder="Select course"
@@ -147,7 +145,7 @@ function SwayamRegistration() {
         onChange={(value) => handleChoiceChange(slot.sno, value)}
       />
     ),
-    Remark: (
+    "Remark": (
       <Select
         placeholder="Select remark"
         data={[
@@ -162,28 +160,17 @@ function SwayamRegistration() {
 
   return (
     <Card shadow="sm" p="lg" radius="md" withBorder>
-      <Text
-        size="lg"
-        weight={700}
-        mb="md"
-        style={{ textAlign: "center", color: "#3B82F6" }}
-      >
+      <Text size="lg" weight={700} mb="md" style={{ textAlign: "center", color: "#3B82F6" }}>
         Swayam Registration For This Semester
       </Text>
       {loading ? (
         <Loader />
       ) : error ? (
-        <Alert color="red" mb="md">
-          {error.toString()}
-        </Alert>
+        <Alert color="red" mb="md">{error.toString()}</Alert>
       ) : (
         <>
           <div style={{ overflowX: "auto" }}>
-            <FusionTable
-              columnNames={columnNames}
-              elements={tableRows}
-              width="100%"
-            />
+            <FusionTable columnNames={columnNames} elements={tableRows} width="100%" />
           </div>
           <Button
             size="sm"
@@ -211,5 +198,6 @@ function SwayamRegistration() {
     </Card>
   );
 }
+
 
 export default SwayamRegistration;
